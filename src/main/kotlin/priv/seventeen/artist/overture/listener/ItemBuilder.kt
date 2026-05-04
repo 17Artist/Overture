@@ -62,6 +62,16 @@ object ItemBuilder {
             meta.buildRelease(stream.sourceItem, event.itemMeta)
         }
 
+        // 耐久同步（从 stream 的 sourceTag 读取数据，因为此时 NBT 尚未 saveTo）
+        val durMeta = itemDef.metaList.filterIsInstance<priv.seventeen.artist.overture.core.meta.impl.MetaDurability>().firstOrNull()
+        if (durMeta != null) {
+            val data = stream.sourceCompound.getCompound("data")
+            val current = data.getInt("durability_current")
+            val maxDur = data.getInt("durability")
+            val maxItemDur = stream.sourceItem.type.maxDurability.toInt()
+            durMeta.syncDurability(event.itemMeta, current, maxDur, maxItemDur)
+        }
+
         // Display 构建（仅 Generated 流）
         if (stream is ItemStreamGenerated) {
             buildDisplay(event.player, stream, itemDef, event.itemMeta)

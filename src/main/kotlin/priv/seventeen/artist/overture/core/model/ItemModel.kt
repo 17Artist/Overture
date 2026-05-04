@@ -31,7 +31,7 @@ class ItemModel(
             val cancelEvent = key.endsWith("!!")
             val trigger = ActionTrigger.fromKey(cleanKey) ?: continue
             val script = eventSection.getString(key) ?: continue
-            result[trigger] = ItemAction(trigger, script, cancelEvent)
+            result[trigger] = ItemAction(trigger, script, cancelEvent).compile()
         }
         return result
     }

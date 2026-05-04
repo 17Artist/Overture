@@ -9,7 +9,7 @@
 | `/ot list` | `[group]` | 玩家 | 打开物品菜单 GUI，可指定分组 |
 | `/ot give` | `<item> [player] [amount]` | OP | 发放物品给指定玩家，默认 1 个 |
 | `/ot get` | `<item> [amount]` | 玩家 | 获取物品到自己背包 |
-| `/ot rebuild` | — | 玩家 | 强制重构手持物品（触发更新） |
+| `/ot rebuild` | — | 玩家 | 强制重构手持物品（不检查版本，直接重新构建） |
 | `/ot serialize` | — | 玩家 | 序列化手持物品为 JSON 并输出到聊天 |
 | `/ot info` | — | 玩家 | 查看手持物品的 Overture 信息 |
 | `/ot reload` | — | OP | 重载所有配置文件 |

@@ -66,6 +66,8 @@ meta:
 
 **注入的展示变量**：`durability`（耐久条）、`durability_current`、`durability_max`
 
+**耐久耗尽行为**：当 `durability_current` 降至 0 时，物品的交互（左键/右键/攻击/破坏方块）会被自动阻止。如果配置了 `remains`，物品会变为残骸物品；否则播放破碎音效并移除物品。
+
 ## unbreakable
 
 不可破坏。

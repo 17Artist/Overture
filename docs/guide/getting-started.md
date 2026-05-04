@@ -78,7 +78,7 @@ simple_display:
 | `/ot list [group]` | 打开物品菜单 |
 | `/ot give <item> [player] [amount]` | 发放物品 |
 | `/ot get <item> [amount]` | 获取物品 |
-| `/ot rebuild` | 重构手持物品 |
+| `/ot rebuild` | 强制重构手持物品 |
 | `/ot serialize` | 序列化手持物品 |
 | `/ot info` | 查看物品信息 |
 | `/ot reload` | 重载配置 |

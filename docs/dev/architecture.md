@@ -63,11 +63,11 @@ ItemManager.generate(id, player)
 │       └─ 记录 meta-history
 │
 └─ ItemStream.toItemStack(player)
-    ├─ sourceTag.saveTo(sourceItem)      ← NBT → ItemStack
     ├─ 获取 ItemMeta
     ├─ 触发 ItemReleaseEvent.Release     ← Meta buildMeta + Display 构建
     │   ├─ Meta.buildMeta(itemMeta)
     │   ├─ Meta.buildRelease(item, meta)
+    │   ├─ 耐久同步（syncDurability）
     │   └─ Display 构建（仅 ItemStreamGenerated）:
     │       ├─ SelectDisplay 事件
     │       ├─ 条件展示评估
@@ -75,6 +75,9 @@ ItemManager.generate(id, player)
     │       ├─ Display 事件
     │       └─ Display.build() → name + lore
     ├─ 写回 ItemMeta
+    ├─ 从 ItemStack 重新读取完整 NBT     ← 包含 Bukkit 写入的 display 等
+    ├─ 合并 overture 节点到最新 NBT
+    ├─ saveTo → 最终 ItemStack           ← 同时包含 display 和 overture 数据
     ├─ 触发 ItemReleaseEvent.Final       ← 最终修改机会
     └─ 返回 ItemStack
 ```

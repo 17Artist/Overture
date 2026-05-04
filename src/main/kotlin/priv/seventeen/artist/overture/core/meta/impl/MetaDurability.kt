@@ -69,22 +69,20 @@ class MetaDurability(
     }
 
     override fun buildRelease(itemStack: ItemStack, itemMeta: ItemMeta) {
+        // 耐久同步在 ItemBuilder.onRelease 中通过 stream 数据处理
+        // 因为此时 NBT 尚未 saveTo，无法从 ItemStack 读取
+    }
+
+    /**
+     * 同步原版耐久条（由 ItemBuilder 调用，传入 stream 数据）
+     */
+    fun syncDurability(itemMeta: ItemMeta, current: Int, maxDur: Int, maxItemDur: Int) {
         if (!synchronous) return
         if (itemMeta !is Damageable) return
+        if (maxDur <= 0 || maxItemDur <= 0) return
 
-        val tag = ItemTag.fromItemStack(itemStack)
-        val root = tag.getCompound("overture")
-        val data = root.getCompound("data")
-        val current = data.getInt("durability_current")
-        val maxDur = data.getInt("durability")
-
-        if (maxDur > 0) {
-            val percent = current.toDouble() / maxDur.toDouble()
-            val maxItemDur = itemStack.type.maxDurability.toInt()
-            if (maxItemDur > 0) {
-                itemMeta.damage = maxItemDur - (maxItemDur * percent).toInt()
-            }
-        }
+        val percent = current.toDouble() / maxDur.toDouble()
+        itemMeta.damage = maxItemDur - (maxItemDur * percent).toInt()
     }
 
     /**

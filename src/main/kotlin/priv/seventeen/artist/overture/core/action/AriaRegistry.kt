@@ -10,6 +10,7 @@ import org.bukkit.potion.PotionEffectType
 import priv.seventeen.artist.aria.callable.CallableManager
 import priv.seventeen.artist.aria.callable.InvocationData
 import priv.seventeen.artist.aria.context.VariableKey
+import priv.seventeen.artist.aria.interop.JavaObjectMirror
 import priv.seventeen.artist.aria.value.*
 import priv.seventeen.artist.asteroid.item.ItemTagData
 import priv.seventeen.artist.asteroid.item.ItemTagType
@@ -154,6 +155,31 @@ object AriaRegistry {
             val stream = getStream(data)
             NumberValue(stream?.sourceItem?.amount?.toDouble() ?: 0.0)
         }
+
+        // item.uses() — 获取剩余使用次数
+        manager.registerStaticFunction("item", "uses") { data ->
+            val stream = getStream(data)
+            NumberValue(stream?.overtureData?.getInt("uses")?.toDouble() ?: 0.0)
+        }
+
+        // item.use(n?) — 消耗使用次数，默认 1。次数耗尽时自动消耗物品
+        manager.registerStaticFunction("item", "use") { data ->
+            val stream = getStream(data)
+            val amount = if (data.argCount() > 0) data.get(0).numberValue().toInt() else 1
+            if (stream != null) {
+                val dataTag = stream.overtureData
+                val current = dataTag.getInt("uses")
+                if (current > 0) {
+                    val newValue = (current - amount).coerceAtLeast(0)
+                    stream.setData("uses", ItemTagData.of(newValue))
+                    stream.signals.add(ItemSignal.DURABILITY_CHANGED)
+                    if (newValue <= 0) {
+                        stream.sourceItem.amount = 0
+                    }
+                }
+            }
+            NoneValue.NONE
+        }
     }
 
     // ==================== cooldown 命名空间 ====================
@@ -246,11 +272,9 @@ object AriaRegistry {
         manager.registerStaticFunction("", "cancel") { data ->
             val event = data.context.globalStorage
                 .getGlobalVariable(VariableKey.of("event")).value
-            if (event is ObjectValue<*>) {
-                val obj = event.jvmValue()
-                if (obj is Cancellable) {
-                    obj.isCancelled = true
-                }
+            val obj = unwrapJava(event)
+            if (obj is Cancellable) {
+                obj.isCancelled = true
             }
             NoneValue.NONE
         }
@@ -297,16 +321,22 @@ object AriaRegistry {
 
     // ==================== 辅助方法 ====================
 
+    private fun unwrapJava(value: IValue<*>): Any? {
+        if (value !is ObjectValue<*>) return null
+        val jvm = value.jvmValue()
+        return if (jvm is JavaObjectMirror) jvm.javaObject else jvm
+    }
+
     private fun getPlayer(data: InvocationData): Player? {
         val value = data.context.globalStorage
             .getGlobalVariable(VariableKey.of("player")).value
-        return if (value is ObjectValue<*>) value.jvmValue() as? Player else null
+        return unwrapJava(value) as? Player
     }
 
     private fun getStream(data: InvocationData): ItemStream? {
         val value = data.context.globalStorage
             .getGlobalVariable(VariableKey.of("item")).value
-        return if (value is ObjectValue<*>) value.jvmValue() as? ItemStream else null
+        return unwrapJava(value) as? ItemStream
     }
 
     @Suppress("DEPRECATION")

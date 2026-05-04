@@ -86,13 +86,22 @@ object OvertureCommand {
                         return@command
                     }
 
-                    val updated = UpdateManager.checkUpdate(player, item)
-                    if (updated != null) {
-                        player.inventory.setItemInMainHand(updated)
-                        ctx.reply(ColorUtil.colored("&a物品已重构"))
-                    } else {
-                        ctx.reply(ColorUtil.colored("&7物品无需更新"))
+                    val stream = ItemStream(item)
+                    if (!stream.isOverture) {
+                        ctx.reply(ColorUtil.colored("&c非 Overture 物品"))
+                        return@command
                     }
+
+                    val itemDef = ItemManager.getItem(stream.overtureId ?: "") ?: run {
+                        ctx.reply(ColorUtil.colored("&c物品定义不存在"))
+                        return@command
+                    }
+
+                    // 强制重构（不检查版本）
+                    val rebuilt = itemDef.build(player, stream)
+                    val result = rebuilt.toItemStack(player)
+                    player.inventory.setItemInMainHand(result)
+                    ctx.reply(ColorUtil.colored("&a物品已重构"))
                 }
                 .command("serialize", "序列化手持物品", sender = SenderType.PLAYER) { ctx ->
                     val player = ctx.player!!

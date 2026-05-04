@@ -73,7 +73,11 @@ if (cooldown.check('fireball', 5000)) {
 var.level = item.data('custom.level')
 item.data('custom.level', level + 1)
 
-// 消耗品
+// 消耗品（使用次数限制）
+item.use()
+sendMessage('&a剩余使用次数: ' + item.uses())
+
+// 消耗品（直接消耗物品数量）
 item.consume(1)
 potion.give('REGENERATION', 200, 2)
 
@@ -81,3 +85,35 @@ potion.give('REGENERATION', 200, 2)
 cancel()
 sendMessage('&c此物品不可丢弃')
 ```
+
+### 使用次数 (uses)
+
+在 `data` 中配置 `uses` 字段，配合 `item.use()` 和 `item.uses()` 实现使用次数限制：
+
+```yaml
+my_scroll:
+  display: simple_display
+  icon: PAPER
+  name:
+    item_name: "&d传送卷轴"
+  lore:
+    item_type: "&5消耗品"
+    item_desc:
+      - "&f使用后传送回出生点"
+      - "&7剩余次数: &f<uses_display>"
+  data:
+    uses: 5
+  data-mapper:
+    uses_display: "{uses}"
+  event:
+    on_right_click!!: |
+      if (item.uses() > 0) {
+        item.use()
+        runCommand('spawn')
+        sendMessage('&a已传送！剩余 ' + item.uses() + ' 次')
+      } else {
+        sendMessage('&c使用次数已耗尽')
+      }
+```
+
+`item.use(n?)` 会自动递减 `data.uses`，当次数降至 0 时自动消耗物品。

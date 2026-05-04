@@ -17,6 +17,8 @@
 | `item.update()`         | 标记物品需要更新                            |
 | `item.id()`             | 获取物品 ID                             |
 | `item.amount()`         | 获取物品数量                              |
+| `item.uses()`           | 获取剩余使用次数（读取 `data.uses`）            |
+| `item.use(n?)`          | 消耗使用次数，默认 1。次数耗尽时自动消耗物品             |
 
 ## cooldown 命名空间
 

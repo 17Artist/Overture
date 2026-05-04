@@ -81,6 +81,8 @@ open class ItemStream(val sourceItem: ItemStack) {
         val dataTag = root.getCompound(ItemKey.DATA)
         dataTag.putDeep(key, data)
         root.putCompound(ItemKey.DATA, dataTag)
+        // 确保修改传播回 sourceTag
+        sourceTag.putCompound(ItemKey.ROOT, root)
     }
 
     /**
@@ -98,6 +100,8 @@ open class ItemStream(val sourceItem: ItemStack) {
         val dataTag = root.getCompound(ItemKey.DATA)
         dataTag.removeDeep(key)
         root.putCompound(ItemKey.DATA, dataTag)
+        // 确保修改传播回 sourceTag
+        sourceTag.putCompound(ItemKey.ROOT, root)
     }
 
     /**
@@ -126,23 +130,38 @@ open class ItemStream(val sourceItem: ItemStack) {
     /**
      * 完整释放为 ItemStack（触发 Release 事件链）
      * 这是生成物品的标准出口
+     *
+     * 流程：
+     * 1. 触发 Release 事件 → Meta 写入 ItemMeta，Display 构建 name/lore
+     * 2. setItemMeta → Bukkit 层数据（display/enchant/attribute）写入 ItemStack
+     * 3. 从 ItemStack 重新读取完整 NBT（包含 Bukkit 刚写入的 display 等）
+     * 4. 把 overture 节点合并到这份最新 NBT 上
+     * 5. saveTo → 最终 ItemStack 同时包含 display 和 overture 数据
      */
     fun toItemStack(player: Player? = null): ItemStack {
-        // 先保存 NBT
-        sourceTag.saveTo(sourceItem)
-
         // 获取 ItemMeta
-        val itemMeta = sourceItem.itemMeta ?: return sourceItem
+        val itemMeta = sourceItem.itemMeta ?: return sourceTag.saveTo(sourceItem)
 
-        // 触发 Release 事件
+        // 1. 触发 Release 事件（Meta buildMeta + Display 构建）
         val releaseEvent = ItemReleaseEvent.Release(player, this, itemMeta)
         Bukkit.getPluginManager().callEvent(releaseEvent)
 
-        // 写回 ItemMeta
+        // 2. 写回 ItemMeta（display/lore/enchant/attribute 等 Bukkit 层数据）
         sourceItem.itemMeta = itemMeta
 
+        // 3. 从 setItemMeta 后的 ItemStack 重新读取完整 NBT
+        //    此时包含 Bukkit 写入的 display.Name, display.Lore, Enchantments 等
+        val freshTag = ItemTag.fromItemStack(sourceItem)
+
+        // 4. 把 overture 节点合并到最新 NBT 上
+        val overtureCompound = sourceTag.getCompound(ItemKey.ROOT)
+        freshTag.putCompound(ItemKey.ROOT, overtureCompound)
+
+        // 5. saveTo 写入最终 ItemStack（同时包含 display 和 overture）
+        val result = freshTag.saveTo(sourceItem)
+
         // 触发 Final 事件
-        val finalEvent = ItemReleaseEvent.Final(player, this, sourceItem)
+        val finalEvent = ItemReleaseEvent.Final(player, this, result)
         Bukkit.getPluginManager().callEvent(finalEvent)
 
         return finalEvent.itemStack

@@ -40,7 +40,11 @@ object ActionExecutor {
         event: Event? = null,
         eventVars: Map<String, Any> = emptyMap()
     ): Boolean {
-        val compiled = action.compiled ?: return false
+//        BlinkLog.detail("[ActionExecutor] trigger=${action.trigger.key}, compiled=${action.compiled != null}, cancelEvent=${action.cancelEvent}")
+        val compiled = action.compiled ?: run {
+//            BlinkLog.warn("[ActionExecutor] compiled 为 null, 脚本: ${action.script.take(50)}...")
+            return false
+        }
 
         // 自动取消事件
         if (action.cancelEvent && event is Cancellable) {
