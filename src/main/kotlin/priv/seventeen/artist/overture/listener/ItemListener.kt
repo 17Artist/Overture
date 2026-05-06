@@ -302,13 +302,12 @@ object ItemListener {
         stream.save()
 
         // 完整重构：重新构建物品（触发 Release 事件链，更新 Display）
+        // toItemStack 内部通过 saveTo 将完整 NBT（含 overture 节点）直接写入 sourceItem
+        // sourceItem 就是 item 本身，所以无需额外写回操作
+        // 注意：不能使用 item.itemMeta = result.itemMeta，因为 setItemMeta 会清除自定义 NBT
         val itemDef = ItemManager.getItem(stream.overtureId ?: return) ?: return
         val rebuilt = itemDef.build(player, stream)
-        val result = rebuilt.toItemStack(player)
-        // 将结果写回原 ItemStack
-        item.type = result.type
-        item.amount = result.amount
-        item.itemMeta = result.itemMeta
+        rebuilt.toItemStack(player)
     }
 
     private fun handleItemDestroy(player: Player, stream: ItemStream, item: ItemStack) {
