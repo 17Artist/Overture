@@ -60,6 +60,7 @@ object ItemListener {
         ActionExecutor.execute(action, event.player, stream, event, itemDef.eventVars)
 
         if (stream.signals.isNotEmpty()) {
+            BlinkLog.debug("[onInteract] signals=${stream.signals}, triggering rebuild")
             rebuildItem(event.player, stream)
         }
     }
@@ -303,11 +304,13 @@ object ItemListener {
 
         // 1. 将脚本中的数据修改写回 sourceTag → sourceItem
         stream.save()
+        BlinkLog.debug("[rebuildItem] saved stream, overtureId=${stream.overtureId}")
 
         // 2. 完整重构：基于当前数据重新构建物品
         val itemDef = ItemManager.getItem(stream.overtureId ?: return) ?: return
         val rebuilt = itemDef.build(player, stream)
         val result = rebuilt.toItemStack(player)
+        BlinkLog.debug("[rebuildItem] rebuilt complete, setting to main hand")
 
         // 3. 显式写回玩家主手（不依赖引用，确保生效）
         player.inventory.setItemInMainHand(result)
