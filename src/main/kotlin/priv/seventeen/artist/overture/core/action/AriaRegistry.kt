@@ -45,14 +45,14 @@ object AriaRegistry {
             if (stream != null) {
                 val current = stream.getData("durability_current")?.asInt() ?: 0
                 val newValue = (current - amount).coerceAtLeast(0)
-                BlinkLog.debug("[item.damage] current=$current, amount=$amount, newValue=$newValue")
+                BlinkLog.info("[item.damage] current=$current, amount=$amount, newValue=$newValue")
                 stream.setData("durability_current", ItemTagData.of(newValue))
                 stream.signals.add(ItemSignal.DURABILITY_CHANGED)
                 if (newValue <= 0) {
                     stream.signals.add(ItemSignal.DURABILITY_DESTROYED)
                 }
             } else {
-                BlinkLog.debug("[item.damage] stream is null!")
+                BlinkLog.info("[item.damage] stream is null!")
             }
             NoneValue.NONE
         }
@@ -175,18 +175,18 @@ object AriaRegistry {
             val amount = if (data.argCount() > 0) data.get(0).numberValue().toInt() else 1
             if (stream != null) {
                 val current = stream.getData("uses")?.asInt() ?: 0
-                BlinkLog.debug("[item.use] current=$current, amount=$amount")
+                BlinkLog.info("[item.use] current=$current, amount=$amount")
                 if (current > 0) {
                     val newValue = (current - amount).coerceAtLeast(0)
                     stream.setData("uses", ItemTagData.of(newValue))
                     stream.signals.add(ItemSignal.DURABILITY_CHANGED)
-                    BlinkLog.debug("[item.use] newValue=$newValue, signals=${stream.signals}")
+                    BlinkLog.info("[item.use] newValue=$newValue, signals=${stream.signals}")
                     if (newValue <= 0) {
                         stream.sourceItem.amount = 0
                     }
                 }
             } else {
-                BlinkLog.debug("[item.use] stream is null!")
+                BlinkLog.info("[item.use] stream is null!")
             }
             NoneValue.NONE
         }
