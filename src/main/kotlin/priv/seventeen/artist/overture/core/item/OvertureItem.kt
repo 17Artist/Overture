@@ -119,8 +119,11 @@ class OvertureItem(
      * 构建物品（基于已有 ItemStream 更新）
      */
     fun build(player: Player?, existingStream: ItemStream): ItemStreamGenerated {
+        // 先将内存中的 NBT 修改写回 sourceItem，确保新 stream 读到最新数据
+        val savedItem = existingStream.save()
+
         val stream = ItemStreamGenerated(
-            existingStream.sourceItem,
+            savedItem,
             nameVars.toMutableMap(),
             loreVars.mapValues { it.value.toMutableList() }.toMutableMap()
         )
