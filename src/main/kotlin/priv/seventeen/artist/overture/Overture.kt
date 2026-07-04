@@ -53,6 +53,9 @@ object Overture {
         // 加载物品
         ItemManager.reload()
 
+        // 检测可选依赖（触发 lazy 初始化，日志在此时打印）
+        priv.seventeen.artist.overture.hook.ArcartXHook.enabled
+
         BlinkLog.success("已加载 §b${ItemManager.getItems().size} §f个物品, §b${DisplayManager.getDisplayCount()} §f个展示方案")
     }
 

@@ -51,6 +51,16 @@ abstract class Meta {
     open fun drop(player: Player?, compound: ItemTag) {}
 
     /**
+     * 清理阶段 — NBT（带根节点）
+     * 需要操作根 NBT（非 overture 子节点）的 Meta 重写此方法
+     *
+     * @param sourceTag 物品完整 NBT 根节点
+     */
+    open fun drop(player: Player?, compound: ItemTag, sourceTag: ItemTag) {
+        drop(player, compound)
+    }
+
+    /**
      * 清理阶段 — ItemMeta
      */
     open fun dropMeta(itemMeta: ItemMeta) {}

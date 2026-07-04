@@ -34,7 +34,7 @@ object ItemBuilder {
         val dropMetaKeys = stream.getDropMeta(itemDef.metaList)
         for (metaKey in dropMetaKeys) {
             val oldMeta = MetaRegistry.create(metaKey, null, null, false)
-            oldMeta?.drop(event.player, compound)
+            oldMeta?.drop(event.player, compound, stream.sourceTag)
         }
 
         // 2. Build 阶段：构建当前 Meta
