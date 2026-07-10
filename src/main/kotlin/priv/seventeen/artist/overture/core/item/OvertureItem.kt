@@ -78,6 +78,30 @@ class OvertureItem(
     var group: ItemGroup? = null
 
     /**
+     * 模板物品缓存
+     * 以 player = null 完整构建一次，仅用于展示读取（菜单图标、名称查询等）
+     * reload 后 OvertureItem 对象整体重建，缓存自然失效
+     */
+    private val templateItem: ItemStack by lazy { buildItemStack(null) }
+
+    /** 模板展示名（缓存，不含玩家条件展示与实例数据变量） */
+    val templateName: String? by lazy {
+        templateItem.itemMeta?.takeIf { it.hasDisplayName() }?.displayName
+    }
+
+    /** 模板描述（缓存，不含玩家条件展示与实例数据变量） */
+    val templateLore: List<String> by lazy {
+        templateItem.itemMeta?.lore ?: emptyList()
+    }
+
+    /**
+     * 获取模板物品副本
+     * 仅用于展示场景（菜单图标等），不要直接发放给玩家：
+     * unique 物品的 UUID、随机词条等实例数据不会重新生成
+     */
+    fun templateItemStack(): ItemStack = templateItem.clone()
+
+    /**
      * 构建物品（首次生成）
      */
     fun build(player: Player?): ItemStreamGenerated {

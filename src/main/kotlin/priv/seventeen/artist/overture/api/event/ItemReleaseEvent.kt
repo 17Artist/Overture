@@ -1,5 +1,6 @@
 package priv.seventeen.artist.overture.api.event
 
+import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
@@ -9,6 +10,8 @@ import priv.seventeen.artist.overture.core.item.ItemStream
 
 /**
  * 物品释放事件
+ * 动态 async 标记：允许在异步线程生成物品（如后台序列化入库场景），
+ * 监听器如需操作世界状态请先检查 isAsynchronous
  */
 object ItemReleaseEvent {
 
@@ -19,7 +22,7 @@ object ItemReleaseEvent {
         val player: Player?,
         val stream: ItemStream,
         val itemMeta: ItemMeta
-    ) : Event() {
+    ) : Event(!Bukkit.isPrimaryThread()) {
 
         override fun getHandlers(): HandlerList = handlerList
 
@@ -36,7 +39,7 @@ object ItemReleaseEvent {
         val player: Player?,
         val stream: ItemStream,
         var displayId: String?
-    ) : Event() {
+    ) : Event(!Bukkit.isPrimaryThread()) {
 
         override fun getHandlers(): HandlerList = handlerList
 
@@ -54,7 +57,7 @@ object ItemReleaseEvent {
         val stream: ItemStream,
         val nameVars: MutableMap<String, String>,
         val loreVars: MutableMap<String, MutableList<String>>
-    ) : Event() {
+    ) : Event(!Bukkit.isPrimaryThread()) {
 
         override fun getHandlers(): HandlerList = handlerList
 
@@ -71,7 +74,7 @@ object ItemReleaseEvent {
         val player: Player?,
         val stream: ItemStream,
         var itemStack: ItemStack
-    ) : Event() {
+    ) : Event(!Bukkit.isPrimaryThread()) {
 
         override fun getHandlers(): HandlerList = handlerList
 
