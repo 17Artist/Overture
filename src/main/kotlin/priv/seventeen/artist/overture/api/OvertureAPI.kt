@@ -37,6 +37,25 @@ object OvertureAPI {
     fun generateItem(id: String, player: Player? = null): ItemStack? = ItemManager.generate(id, player)
 
     /**
+     * 获取物品模板展示名（缓存，无需 build）
+     * 返回的是模板默认名：不含玩家条件展示与实例数据变量
+     * 适用于拍卖行列表、日志、消息等只读展示场景
+     */
+    fun getItemName(id: String): String? = ItemManager.getItem(id)?.templateName
+
+    /**
+     * 获取物品模板描述（缓存，无需 build）
+     */
+    fun getItemLore(id: String): List<String>? = ItemManager.getItem(id)?.templateLore
+
+    /**
+     * 获取物品模板副本（缓存 clone，无需重新 build）
+     * 仅用于展示场景（菜单图标等），不要直接发放给玩家：
+     * unique 物品的 UUID、随机词条等实例数据不会重新生成
+     */
+    fun getTemplateItem(id: String): ItemStack? = ItemManager.getItem(id)?.templateItemStack()
+
+    /**
      * 从 ItemStack 读取物品流
      */
     fun readStream(item: ItemStack): ItemStream = ItemManager.read(item)
