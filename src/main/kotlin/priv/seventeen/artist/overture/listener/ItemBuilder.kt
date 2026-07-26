@@ -3,6 +3,7 @@ package priv.seventeen.artist.overture.listener
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.inventory.meta.ItemMeta
+import priv.seventeen.artist.blink.BlinkLog
 import priv.seventeen.artist.blink.event.AutoListener
 import priv.seventeen.artist.overture.api.event.ItemBuildEvent
 import priv.seventeen.artist.overture.api.event.ItemReleaseEvent
@@ -42,7 +43,12 @@ object ItemBuilder {
         val sourceTag = stream.sourceTag
         for (meta in itemDef.metaList.sortedBy { it.priority }) {
             if (isUpdateCheck && !meta.locked) continue
-            meta.build(event.player, compound, sourceTag, stream.signals)
+            try {
+                meta.build(event.player, compound, sourceTag, stream.signals)
+            } catch (e: Throwable) {
+                // 单个 Meta 失败（例如某版本缺少对应 NMS 桥接）不能中断整条构建链
+                BlinkLog.warn("构建 Meta 失败 [${event.itemId}/${meta.key}]: ${e.message}")
+            }
         }
 
         // 3. 记录 Meta 历史
@@ -58,8 +64,13 @@ object ItemBuilder {
 
         // Meta buildMeta 阶段
         for (meta in itemDef.metaList.sortedBy { it.priority }) {
-            meta.buildMeta(event.itemMeta)
-            meta.buildRelease(stream.sourceItem, event.itemMeta)
+            try {
+                meta.buildMeta(event.itemMeta)
+                meta.buildRelease(stream.sourceItem, event.itemMeta)
+            } catch (e: Throwable) {
+                // 同上：避免一个 Meta 抛异常导致后续 Meta 与 Display 全部不生效
+                BlinkLog.warn("写入 ItemMeta 失败 [${itemDef.id}/${meta.key}]: ${e.message}")
+            }
         }
 
         // 耐久同步（从 stream 的 sourceTag 读取数据，因为此时 NBT 尚未 saveTo）

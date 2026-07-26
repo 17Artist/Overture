@@ -7,6 +7,7 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import priv.seventeen.artist.asteroid.item.ItemTag
 import priv.seventeen.artist.asteroid.item.ItemTagData
+import priv.seventeen.artist.blink.BlinkLog
 import priv.seventeen.artist.overture.api.event.ItemBuildEvent
 import priv.seventeen.artist.overture.core.action.ActionTrigger
 import priv.seventeen.artist.overture.core.action.ItemAction
@@ -243,6 +244,9 @@ class OvertureItem(
             val meta = MetaRegistry.create(cleanKey, metaSection, metaValue, locked)
             if (meta != null) {
                 result.add(meta)
+            } else {
+                // 键名写错时静默忽略会让人以为「配了但没生效」，这里给出提示
+                BlinkLog.warn("物品 $id 的 meta 键 \"$key\" 无法识别，已忽略。可用键: ${MetaRegistry.getRegisteredKeys().sorted().joinToString(", ")}")
             }
         }
         return result
