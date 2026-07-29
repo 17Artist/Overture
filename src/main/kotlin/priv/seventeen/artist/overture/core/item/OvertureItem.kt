@@ -7,6 +7,7 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import priv.seventeen.artist.asteroid.item.ItemTag
 import priv.seventeen.artist.asteroid.item.ItemTagData
+import priv.seventeen.artist.blink.BlinkLog
 import priv.seventeen.artist.overture.api.event.ItemBuildEvent
 import priv.seventeen.artist.overture.core.action.ActionTrigger
 import priv.seventeen.artist.overture.core.action.ItemAction
@@ -76,6 +77,30 @@ class OvertureItem(
 
     /** 所属分组 */
     var group: ItemGroup? = null
+
+    /**
+     * 模板物品缓存
+     * 以 player = null 完整构建一次，仅用于展示读取（菜单图标、名称查询等）
+     * reload 后 OvertureItem 对象整体重建，缓存自然失效
+     */
+    private val templateItem: ItemStack by lazy { buildItemStack(null) }
+
+    /** 模板展示名（缓存，不含玩家条件展示与实例数据变量） */
+    val templateName: String? by lazy {
+        templateItem.itemMeta?.takeIf { it.hasDisplayName() }?.displayName
+    }
+
+    /** 模板描述（缓存，不含玩家条件展示与实例数据变量） */
+    val templateLore: List<String> by lazy {
+        templateItem.itemMeta?.lore ?: emptyList()
+    }
+
+    /**
+     * 获取模板物品副本
+     * 仅用于展示场景（菜单图标等），不要直接发放给玩家：
+     * unique 物品的 UUID、随机词条等实例数据不会重新生成
+     */
+    fun templateItemStack(): ItemStack = templateItem.clone()
 
     /**
      * 构建物品（首次生成）
@@ -219,6 +244,9 @@ class OvertureItem(
             val meta = MetaRegistry.create(cleanKey, metaSection, metaValue, locked)
             if (meta != null) {
                 result.add(meta)
+            } else {
+                // 键名写错时静默忽略会让人以为「配了但没生效」，这里给出提示
+                BlinkLog.warn("物品 $id 的 meta 键 \"$key\" 无法识别，已忽略。可用键: ${MetaRegistry.getRegisteredKeys().sorted().joinToString(", ")}")
             }
         }
         return result
