@@ -25,7 +25,6 @@ import priv.seventeen.artist.overture.api.registry.RegistrationHandle
 import priv.seventeen.artist.overture.core.meta.impl.MetaAttribute
 import priv.seventeen.artist.overture.core.meta.impl.MetaColor
 import priv.seventeen.artist.overture.core.meta.impl.MetaCustomModelData
-import priv.seventeen.artist.overture.core.meta.impl.MetaDrop
 import priv.seventeen.artist.overture.core.meta.impl.MetaDurability
 import priv.seventeen.artist.overture.core.meta.impl.MetaEnchantment
 import priv.seventeen.artist.overture.core.meta.impl.MetaItemFlag
@@ -59,7 +58,6 @@ object MetaRegistry {
         registerBuiltIn("native") { section, _, locked -> MetaNative(section, locked) }
         registerBuiltIn("shiny") { _, value, locked -> MetaShiny(value, locked) }
         registerBuiltIn("rarity") { _, value, locked -> MetaRarity(value, locked) }
-        registerBuiltIn("drop") { _, value, locked -> MetaDrop(value, locked) }
     }
 
     fun register(

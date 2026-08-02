@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "priv.seventeen.artist.overture"
-version = "1.0.0"
+version = providers.gradleProperty("version").getOrElse("1.0.0")
 
 blink {
     name.set("Overture")
@@ -17,7 +17,7 @@ blink {
     apiVersion.set("1.18")
     logPrefix.set("§6♦ §dOverture")
     depend.set(listOf())
-    softDepend.set(listOf("ArcartX"))
+    softDepend.set(emptyList())
     foliaSupported.set(false)
     enableAsteroid.set(true)
     enableAria.set(true)
@@ -34,7 +34,6 @@ dependencies {
     implementation("priv.seventeen.artist.blink:blink-common:1.3.14")
     compileOnly("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
     compileOnly("com.google.code.gson:gson:2.10.1")
-    compileOnly("priv.seventeen.artist.arcartx:ArcartX:2.2.0.5")
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
@@ -59,7 +58,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-val repoPassword: String = System.getenv("repo") ?: ""
+val repoPassword = providers.environmentVariable("repo").orNull.orEmpty()
 
 publishing {
     publications {
@@ -68,16 +67,15 @@ publishing {
                 classifier = null
             }
             artifactId = rootProject.name.lowercase()
-            val buildNumber = System.getenv("BUILD_NUMBER")
-            version = if (buildNumber != null) "${project.version}.$buildNumber" else project.version.toString()
+            version = project.version.toString()
         }
     }
     repositories {
         maven {
-            url = uri(project.findProperty("mavenRepoUrl") as? String ?: "")
-            isAllowInsecureProtocol = true
+            url = uri(providers.gradleProperty("mavenRepoUrl").get())
+            isAllowInsecureProtocol = url.scheme.equals("http", ignoreCase = true)
             credentials {
-                username = project.findProperty("mavenRepoUser") as? String ?: ""
+                username = providers.gradleProperty("mavenRepoUser").get()
                 password = repoPassword
             }
         }

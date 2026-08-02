@@ -37,7 +37,6 @@ import priv.seventeen.artist.overture.feature.ItemAsyncTick
 import priv.seventeen.artist.overture.feature.ItemCooldown
 import priv.seventeen.artist.overture.feature.ItemDurability
 import priv.seventeen.artist.overture.core.diagnostic.BuildDiagnosticsStore
-import priv.seventeen.artist.overture.hook.ArcartXHook
 import java.io.File
 
 /**
@@ -126,9 +125,6 @@ object Overture {
         // 掉落标签解析依赖已加载的物品定义，必须在首次物品重载成功后恢复。
         DropLabelManager.load(File(dataFolder, "drop-labels.yml"))
         DropLabelManager.init()
-
-        // 检测可选依赖
-        ArcartXHook.enabled
 
         BlinkLog.success(
             LanguageManager.text(

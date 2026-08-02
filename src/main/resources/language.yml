@@ -125,7 +125,6 @@ console:
     enabled: "加载完成：&b%items% &f个物品，&b%displays% &f个展示方案"
     disabled: "插件已卸载"
   language-load-failed: "language.yml 读取失败，继续使用当前内容：%error%"
-  arcartx-found: "已接入 ArcartX"
   player-update-failed: "更新玩家 %player% 的物品时出错：%error%"
   meta-build-failed: "构建 Meta 失败 [%item%/%meta%]：%error%"
   item-meta-write-failed: "写入 ItemMeta 失败 [%item%/%meta%]：%error%"
