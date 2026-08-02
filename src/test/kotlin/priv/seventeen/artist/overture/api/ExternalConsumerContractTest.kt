@@ -19,6 +19,7 @@ package priv.seventeen.artist.overture.api
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
@@ -26,13 +27,17 @@ import kotlin.test.assertTrue
 
 class ExternalConsumerContractTest {
     private val root: Path = Path.of("").toAbsolutePath().normalize()
+    private val fixturePaths = listOf(
+        root.resolve("qa/runtime/plugin/src/OvertureQAPlugin.java"),
+        root.resolve("qa/component/src/SymphonyComponentQAPlugin.java")
+    )
     private val fixture: String by lazy {
-        read("qa/runtime/plugin/src/OvertureQAPlugin.java") +
-            read("qa/component/src/SymphonyComponentQAPlugin.java")
+        fixturePaths.joinToString(separator = "\n") { Files.readString(it) }
     }
 
     @Test
     fun `every public api entry is consumed by the external java fixtures`() {
+        assumePrivateFixturesAvailable()
         val methods = setOf(
             "getItemIds", "generateItem", "getItemName", "getItemLore", "getTemplateItem",
             "isOvertureItem", "getOvertureId", "serialize",
@@ -48,6 +53,7 @@ class ExternalConsumerContractTest {
 
     @Test
     fun `external fixtures cover current events and aria calls without legacy namespaces`() {
+        assumePrivateFixturesAvailable()
         val events = setOf(
             "ItemBuildEvent.Pre", "ItemBuildEvent.Post",
             "ItemReleaseEvent.Release", "ItemReleaseEvent.SelectDisplay",
@@ -92,4 +98,12 @@ class ExternalConsumerContractTest {
     }
 
     private fun read(relative: String): String = Files.readString(root.resolve(relative))
+
+    private fun assumePrivateFixturesAvailable() {
+        val missing = fixturePaths.filterNot { Files.isRegularFile(it) }
+        assumeTrue(
+            missing.isEmpty(),
+            "private QA fixtures are not part of the Git checkout: ${missing.joinToString()}"
+        )
+    }
 }
