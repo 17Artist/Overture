@@ -1,0 +1,89 @@
+# 事件模型可被多个物品复用；物品自身的同名事件优先。
+example_weapon_events$:
+  event:
+    on_swap_to_offhand: |
+      val.item.data('held_slot', 'offhand')
+      val.item.update()
+    on_swap_to_mainhand: |
+      val.item.data('held_slot', 'mainhand')
+      val.item.update()
+
+example_greatsword:
+  display: durable_weapon_selector
+  icon: NETHERITE_SWORD
+  drop-label: legendary
+  name:
+    item_name: "&d裂星巨剑"
+    item_level: "&7Lv. VIII"
+  lore:
+    item_type: "&5双手武器"
+    item_desc:
+      - "&f展示事件模型、条件展示与耐久修复"
+      - "&7耐久不高于 40 时自动切换为损坏展示"
+  data:
+    damage: 12
+    crit-rate: 0.25
+    durability!!: 160
+    durability_current: 20
+  data-mapper:
+    damage_display: "{damage}"
+    crit_display: "percent({crit-rate}, 1)"
+    durability_percent: "percent({durability_current}, {durability})"
+    durability_bar: "bar({durability_current}, {durability}, 20)"
+  meta:
+    attribute:
+      mainhand:
+        generic_attack_damage: "+12"
+        generic_attack_speed: "-15%"
+    durability!!:
+      max: 160
+      remains: IRON_SWORD
+      synchronous: true
+    unique: true
+    item_flag:
+      - HIDE_ATTRIBUTES
+    shiny: true
+    rarity: EPIC
+  event:
+    from: [example_weapon_events]
+    on_attack: |
+      val.item.damage(2)
+    on_right_click!!: |
+      if (val.player.checkItemCooldown('greatsword_repair', 3000)) {
+        val.player.setItemCooldown('greatsword_repair')
+        val.item.repair(5)
+      }
+    on_drop!!: |
+      val.item.data('drop_blocked', 1)
+      val.item.update()
+
+example_bow:
+  display: ranged_display
+  icon: BOW
+  name:
+    item_name: "&6余烬长弓"
+  lore:
+    item_type: "&e远程武器"
+    item_desc:
+      - "&f展示 uses/use、附魔和事件模型复用"
+      - "&7每次右键减少一次自定义使用次数"
+  data:
+    uses: 16
+    max-uses: 16
+  data-mapper:
+    uses_display: "{uses}"
+    uses_bar: "bar({uses}, {max-uses}, 16)"
+  meta:
+    enchantment:
+      power: 3
+      unbreaking: 2
+    item_flag:
+      - HIDE_ENCHANTS
+    shiny: true
+    rarity: UNCOMMON
+  event:
+    from: [example_weapon_events]
+    on_right_click: |
+      if (val.item.uses() > 0) {
+        val.item.use()
+      }

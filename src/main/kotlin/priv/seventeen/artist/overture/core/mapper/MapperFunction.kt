@@ -1,122 +1,144 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.mapper
 
+import org.bukkit.NamespacedKey
+import org.bukkit.plugin.Plugin
+import priv.seventeen.artist.overture.api.registry.RegistrationHandle
+import priv.seventeen.artist.overture.core.registry.OwnedRegistry
+
+fun interface MapperHandler {
+    fun map(args: List<Any>): String
+}
 
 /**
- * 内置映射函数注册表
+ * 内置及第三方数据映射函数注册表。
  */
 object MapperFunction {
-
-    private val functions = mutableMapOf<String, (List<Any>) -> String>()
+    private val builtIns = mutableMapOf<String, MapperHandler>()
+    private val registry = OwnedRegistry<MapperHandler>("mapper-function")
 
     init {
-        register("bar") { args ->
+        registerBuiltIn("bar") { args ->
             val current = (args.getOrNull(0) as? Number)?.toInt() ?: 0
             val max = (args.getOrNull(1) as? Number)?.toInt() ?: 1
             val scale = (args.getOrNull(2) as? Number)?.toInt() ?: 20
             buildBar(current, max, scale)
         }
-
-        register("repeat") { args ->
+        registerBuiltIn("repeat") { args ->
             val str = args.getOrNull(0)?.toString() ?: ""
             val n = (args.getOrNull(1) as? Number)?.toInt() ?: 0
             str.repeat(n.coerceIn(0, 100))
         }
-
-        register("format") { args ->
+        registerBuiltIn("format") { args ->
             val pattern = args.getOrNull(0)?.toString() ?: "%s"
-            val formatArgs = args.drop(1).toTypedArray()
             try {
-                String.format(pattern, *formatArgs)
+                String.format(pattern, *args.drop(1).toTypedArray())
             } catch (_: Exception) {
                 pattern
             }
         }
-
-        register("color") { args ->
+        registerBuiltIn("color") { args ->
             val value = (args.getOrNull(0) as? Number)?.toDouble() ?: 0.0
             val min = (args.getOrNull(1) as? Number)?.toDouble() ?: 0.0
             val max = (args.getOrNull(2) as? Number)?.toDouble() ?: 100.0
-            val percent = ((value - min) / (max - min)).coerceIn(0.0, 1.0)
+            val percent = if (max == min) 0.0 else ((value - min) / (max - min)).coerceIn(0.0, 1.0)
             val color = when {
-                percent <= 0.25 -> "§c"  // 红
-                percent <= 0.5 -> "§e"   // 黄
-                percent <= 0.75 -> "§a"  // 浅绿
-                else -> "§2"             // 深绿
+                percent <= 0.25 -> "§c"
+                percent <= 0.5 -> "§e"
+                percent <= 0.75 -> "§a"
+                else -> "§2"
             }
             "$color${value.toInt()}"
         }
-
-        register("percent") { args ->
+        registerBuiltIn("percent") { args ->
             val current = (args.getOrNull(0) as? Number)?.toDouble() ?: 0.0
             val max = (args.getOrNull(1) as? Number)?.toDouble() ?: 1.0
-            val percent = if (max > 0) (current / max * 100) else 0.0
+            val percent = if (max > 0) current / max * 100 else 0.0
             "%.1f%%".format(percent)
         }
-
-        register("roman") { args ->
-            val n = (args.getOrNull(0) as? Number)?.toInt() ?: 0
-            toRoman(n)
+        registerBuiltIn("roman") { args ->
+            toRoman((args.getOrNull(0) as? Number)?.toInt() ?: 0)
         }
-
-        register("fixed") { args ->
+        registerBuiltIn("fixed") { args ->
             val value = (args.getOrNull(0) as? Number)?.toDouble() ?: 0.0
-            val decimals = (args.getOrNull(1) as? Number)?.toInt() ?: 1
+            val decimals = (args.getOrNull(1) as? Number)?.toInt()?.coerceIn(0, 10) ?: 1
             "%.${decimals}f".format(value)
         }
-
-        register("condition") { args ->
-            val cond = args.getOrNull(0)
-            val trueVal = args.getOrNull(1)?.toString() ?: ""
-            val falseVal = args.getOrNull(2)?.toString() ?: ""
-            val result = when (cond) {
-                is Boolean -> cond
-                is Number -> cond.toInt() != 0
-                is String -> cond.isNotEmpty() && cond != "false" && cond != "0"
+        registerBuiltIn("condition") { args ->
+            val condition = when (val value = args.getOrNull(0)) {
+                is Boolean -> value
+                is Number -> value.toInt() != 0
+                is String -> value.isNotEmpty() && value != "false" && value != "0"
                 else -> false
             }
-            if (result) trueVal else falseVal
+            if (condition) args.getOrNull(1)?.toString().orEmpty()
+            else args.getOrNull(2)?.toString().orEmpty()
         }
     }
 
-    /**
-     * 注册映射函数
-     */
-    fun register(name: String, handler: (List<Any>) -> String) {
-        functions[name] = handler
+    fun register(
+        owner: Plugin,
+        key: NamespacedKey,
+        priority: Int = 0,
+        handler: MapperHandler
+    ): RegistrationHandle = registry.register(owner, key, priority, handler)
+
+    fun get(name: String): ((List<Any>) -> String)? {
+        builtIns[name]?.let { return it::map }
+        if (':' !in name) return null
+        val key = NamespacedKey.fromString(name.lowercase()) ?: return null
+        return registry.active(key)?.value?.let { it::map }
     }
 
-    /**
-     * 获取映射函数
-     */
-    fun get(name: String): ((List<Any>) -> String)? = functions[name]
+    fun registrations(): List<String> =
+        builtIns.keys.sorted().map { "$it owner=Overture built-in" } +
+            registry.infos().map {
+                "${it.key} owner=${it.ownerName} priority=${it.priority} active=${it.active}"
+            }
 
-    // ==================== 内置实现 ====================
+    private fun registerBuiltIn(name: String, handler: MapperHandler) {
+        builtIns[name] = handler
+    }
 
     private fun buildBar(current: Int, max: Int, scale: Int): String {
-        val filled = if (max > 0) (current.toDouble() / max * scale).toInt().coerceIn(0, scale) else 0
-        val sb = StringBuilder()
-        for (i in 1..scale) {
-            if (i <= filled) {
-                sb.append("§f◆")
-            } else {
-                sb.append("§7◇")
-            }
+        val safeScale = scale.coerceIn(0, 100)
+        val filled = if (max > 0) {
+            (current.toDouble() / max * safeScale).toInt().coerceIn(0, safeScale)
+        } else {
+            0
         }
-        return sb.toString()
+        return buildString {
+            for (index in 1..safeScale) append(if (index <= filled) "§f◆" else "§7◇")
+        }
     }
 
     private fun toRoman(num: Int): String {
         if (num <= 0 || num > 3999) return num.toString()
         val values = intArrayOf(1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1)
         val symbols = arrayOf("M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I")
-        val sb = StringBuilder()
-        var n = num
-        for (i in values.indices) {
-            while (n >= values[i]) {
-                sb.append(symbols[i])
-                n -= values[i]
+        return buildString {
+            var remaining = num
+            for (index in values.indices) {
+                while (remaining >= values[index]) {
+                    append(symbols[index])
+                    remaining -= values[index]
+                }
             }
         }
-        return sb.toString()
     }
 }

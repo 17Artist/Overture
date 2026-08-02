@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.display
 
 import priv.seventeen.artist.overture.util.VariableReader
@@ -5,15 +21,16 @@ import priv.seventeen.artist.overture.util.VariableReader
 /**
  * 多行模板解析器
  * 处理 <var> 单值替换和 <var...> 列表展开
- *
- * 核心算法:
- * - <var> 普通变量: 取列表的第一个值
- * - <var...> 展开变量: 逐行消费列表中的值，列表未消费完则当前模板行不移除
- * - 空列表变量: 整行跳过（pass 机制）
  */
 class StructureList(templates: List<String>) {
 
     private val parsedLines: List<List<VariableReader.Part>> = templates.map { reader.parse(it) }
+
+    /** 模板中使用的列表展开变量。 */
+    val listVariableNames: Set<String> = parsedLines
+        .flatten()
+        .filterIsInstance<VariableReader.Part.ListVariable>()
+        .mapTo(linkedSetOf()) { it.name }
 
     /**
      * 构建最终描述列表

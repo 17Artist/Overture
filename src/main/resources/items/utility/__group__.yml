@@ -1,0 +1,5 @@
+priority: 20
+icon: COMPASS
+name: "&b功能物品示例"
+lore:
+  - "&7使用次数、嵌套数据、原生 NBT 与槽位事件"

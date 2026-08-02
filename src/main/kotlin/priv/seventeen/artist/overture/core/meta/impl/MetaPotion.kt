@@ -1,11 +1,31 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.meta.impl
 
+import org.bukkit.entity.Player
 import org.bukkit.inventory.meta.ItemMeta
 import org.bukkit.inventory.meta.PotionMeta
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import priv.seventeen.artist.asteroid.item.ItemTag
+import priv.seventeen.artist.overture.core.item.ItemSignal
 import priv.seventeen.artist.overture.core.meta.Meta
 import priv.seventeen.artist.overture.core.meta.MetaKey
+import priv.seventeen.artist.overture.core.meta.MetaState
 
 /**
  * 药水效果 Meta
@@ -26,6 +46,16 @@ class MetaPotion(
     override val key: String = "potion"
 
     val effects: List<PotionEffect> = parseEffects()
+    private var cleanupEffects: List<PotionEffectType> = emptyList()
+
+    @Suppress("DEPRECATION")
+    override fun build(player: Player?, compound: ItemTag, sourceTag: ItemTag, signals: Set<ItemSignal>) {
+        MetaState.putStrings(compound, key, effects.map { it.type.name })
+    }
+
+    override fun prepareRebuild(compound: ItemTag, sourceTag: ItemTag) {
+        cleanupEffects = MetaState.getStrings(compound, key).mapNotNull { resolvePotionType(it) }
+    }
 
     override fun buildMeta(itemMeta: ItemMeta) {
         if (itemMeta !is PotionMeta) return
@@ -36,9 +66,14 @@ class MetaPotion(
 
     override fun dropMeta(itemMeta: ItemMeta) {
         if (itemMeta !is PotionMeta) return
-        for (effect in effects) {
-            itemMeta.removeCustomEffect(effect.type)
+        for (type in cleanupEffects) {
+            itemMeta.removeCustomEffect(type)
         }
+    }
+
+    override fun drop(player: Player?, compound: ItemTag, sourceTag: ItemTag) {
+        cleanupEffects = MetaState.getStrings(compound, key).mapNotNull { resolvePotionType(it) }
+        MetaState.remove(compound, key)
     }
 
     private fun parseEffects(): List<PotionEffect> {

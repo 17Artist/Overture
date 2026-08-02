@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.item
 
 import org.bukkit.Bukkit
@@ -9,12 +25,16 @@ import priv.seventeen.artist.asteroid.item.ItemTagList
 import priv.seventeen.artist.overture.api.event.ItemReleaseEvent
 import priv.seventeen.artist.overture.core.meta.Meta
 import priv.seventeen.artist.overture.core.meta.MetaRegistry
+import priv.seventeen.artist.overture.core.diagnostic.BuildDiagnosticsStore
 
 /**
  * 物品流 — 运行时物品实例
  * 所有物品操作的中间载体，包装 ItemStack + NBT 数据
  */
-open class ItemStream(val sourceItem: ItemStack) {
+open class ItemStream(sourceItem: ItemStack) {
+
+    var sourceItem: ItemStack = sourceItem
+        private set
 
     /** 从 ItemStack 读取的完整 NBT */
     val sourceTag: ItemTag = ItemTag.fromItemStack(sourceItem)
@@ -56,6 +76,15 @@ open class ItemStream(val sourceItem: ItemStack) {
 
     /** 信号集合 */
     val signals: MutableSet<ItemSignal> = mutableSetOf()
+
+    /** 本次更新中已从定义移除的 Meta 实例，供 Release 阶段清理 Bukkit ItemMeta。 */
+    val droppedMeta: MutableList<Meta> = mutableListOf()
+
+    /** 第三方 Behavior 等扩展在本次处理中的耗时（纳秒）。 */
+    val extensionTimings: MutableMap<String, Long> = linkedMapOf()
+
+    /** 本次处理实际经过的 Behavior/Aria 动作链。 */
+    val actionTrace: MutableList<String> = mutableListOf()
 
     /**
      * 检查物品是否过时
@@ -153,7 +182,8 @@ open class ItemStream(val sourceItem: ItemStack) {
      * 保存 NBT 回 ItemStack（仅写入 NBT，不触发事件）
      */
     fun save(): ItemStack {
-        return sourceTag.saveTo(sourceItem)
+        sourceItem = sourceTag.saveTo(sourceItem)
+        return sourceItem
     }
 
     /**
@@ -168,35 +198,35 @@ open class ItemStream(val sourceItem: ItemStack) {
      * 5. saveTo → 最终 ItemStack 同时包含 display 和 overture 数据
      */
     fun toItemStack(player: Player? = null): ItemStack {
-        // 获取 ItemMeta
-        val itemMeta = sourceItem.itemMeta ?: return sourceTag.saveTo(sourceItem)
+        // 先应用 sourceTag 中的 native/overture 修改。Asteroid 1.2.2 的 saveTo
+        // 可能返回新 ItemStack，必须接住返回值。
+        val taggedItem = save()
+        val itemMeta = taggedItem.itemMeta ?: return taggedItem
 
         // 1. 触发 Release 事件（Meta buildMeta + Display 构建）
         val releaseEvent = ItemReleaseEvent.Release(player, this, itemMeta)
         Bukkit.getPluginManager().callEvent(releaseEvent)
 
         // 2. 写回 ItemMeta（display/lore/enchant/attribute 等 Bukkit 层数据）
-        sourceItem.itemMeta = itemMeta
+        taggedItem.itemMeta = itemMeta
 
         // 3. 从 setItemMeta 后的 ItemStack 重新读取完整 NBT
         //    此时包含 Bukkit 写入的 display.Name, display.Lore, Enchantments 等
-        val freshTag = ItemTag.fromItemStack(sourceItem)
+        val freshTag = ItemTag.fromItemStack(taggedItem)
 
-        // 4. 把 sourceTag 中所有根级自定义 tag 合并到最新 NBT 上
-        //    这样既保留 Bukkit 写入的 display 数据，也保留 overture 及其他根级 tag（如 drop）
-        for (key in sourceTag.keys) {
-            val data = sourceTag[key] ?: continue
-            freshTag[key] = data
-        }
+        // 4. Release 动作可能在 save() 之后修改 overture 实例数据，只合并该命名空间。
+        mergeOvertureStateAfterRelease(freshTag, sourceTag)
 
-        // 5. saveTo 写入最终 ItemStack（同时包含 display 和 overture）
-        val result = freshTag.saveTo(sourceItem)
+        // 5. saveTo 写入最终 ItemStack（同时包含最新 Bukkit Meta 和 overture 数据）
+        val result = freshTag.saveTo(taggedItem)
 
         // 触发 Final 事件
         val finalEvent = ItemReleaseEvent.Final(player, this, result)
         Bukkit.getPluginManager().callEvent(finalEvent)
 
-        return finalEvent.itemStack
+        sourceItem = finalEvent.itemStack
+        BuildDiagnosticsStore.record(player, this)
+        return sourceItem
     }
 
     /**
@@ -208,4 +238,8 @@ open class ItemStream(val sourceItem: ItemStack) {
         }
         return sourceTag.getCompound(ItemKey.ROOT)
     }
+}
+internal fun mergeOvertureStateAfterRelease(freshTag: ItemTag, releaseTag: ItemTag) {
+    val overture = releaseTag[ItemKey.ROOT] ?: return
+    freshTag[ItemKey.ROOT] = overture.clone()
 }

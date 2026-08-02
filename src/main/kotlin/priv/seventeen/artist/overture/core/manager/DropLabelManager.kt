@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.manager
 
 import org.bukkit.Bukkit
@@ -10,6 +26,7 @@ import org.bukkit.entity.Item
 import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitTask
 import priv.seventeen.artist.blink.BlinkLog
+import priv.seventeen.artist.overture.core.message.LanguageManager
 import priv.seventeen.artist.blink.bukkitPlugin
 import priv.seventeen.artist.overture.OvertureConfig
 import priv.seventeen.artist.overture.core.item.ItemStream
@@ -50,7 +67,12 @@ object DropLabelManager {
     private var followTask: BukkitTask? = null
 
     fun init() {
-        BlinkLog.info("掉落物标签模式: ${if (useTextDisplay) "TextDisplay" else "ArmorStand"}")
+        BlinkLog.info(
+            LanguageManager.text(
+                "console.drop-label-mode",
+                "mode" to if (useTextDisplay) "TextDisplay" else "ArmorStand"
+            )
+        )
     }
 
     fun load(styleFile: File) {
@@ -67,9 +89,16 @@ object DropLabelManager {
 
         if (styles.isEmpty()) {
             styles["default"] = DropLabelStyle()
-            BlinkLog.warn("drop-labels.yml 未加载到任何样式，已使用内置 default 样式")
+            BlinkLog.warn(LanguageManager.text("console.drop-label-empty"))
         }
-        BlinkLog.info("已加载 ${styles.size} 个掉落物标签样式: ${styles.keys.joinToString()}")
+        BlinkLog.info(
+            LanguageManager.text(
+                "console.drop-label-loaded",
+                "count" to styles.size,
+                "styles" to styles.keys.joinToString()
+            )
+        )
+        refreshExistingLabels()
     }
 
     fun spawnLabel(item: Item) {
@@ -108,6 +137,15 @@ object DropLabelManager {
         labels.clear()
     }
 
+
+    private fun refreshExistingLabels() {
+        val droppedItems = Bukkit.getWorlds()
+            .flatMap { world -> world.entities.filterIsInstance<Item>() }
+            .filter { item -> ItemStream(item.itemStack).isOverture }
+        cleanup()
+        if (!OvertureConfig.instance.dropLabel.enabled) return
+        droppedItems.forEach(::spawnLabel)
+    }
     private fun resolveStyle(itemDef: OvertureItem): DropLabelStyle? {
         val raw = itemDef.config.get("drop-label")
         val styleId = when (raw) {
@@ -158,7 +196,12 @@ object DropLabelManager {
             display.setGravity(false)
             display
         } catch (e: Throwable) {
-            BlinkLog.warn("TextDisplay 创建失败，回退到 ArmorStand: ${e.javaClass.simpleName}: ${e.message}")
+            BlinkLog.warn(
+                LanguageManager.text(
+                    "console.drop-label-text-display-failed",
+                    "error" to "${e.javaClass.simpleName}: ${e.message}"
+                )
+            )
             null
         }
     }
@@ -171,7 +214,12 @@ object DropLabelManager {
             val value = billboardClass.getMethod("valueOf", String::class.java).invoke(null, cfg.billboard.uppercase())
             display.javaClass.getMethod("setBillboard", billboardClass).invoke(display, value)
         }.onFailure {
-            BlinkLog.warn("TextDisplay billboard 配置无效: ${cfg.billboard}")
+            BlinkLog.warn(
+                LanguageManager.text(
+                    "console.drop-label-billboard-invalid",
+                    "value" to cfg.billboard
+                )
+            )
         }
 
         runCatching {
@@ -185,7 +233,12 @@ object DropLabelManager {
             "TRANSPARENT" -> applyTextDisplayBackground(display, "0,0,0,0")
             "CUSTOM" -> applyTextDisplayBackground(display, cfg.backgroundArgb)
             else -> {
-                BlinkLog.warn("TextDisplay background.mode 配置无效: ${cfg.backgroundMode}，已使用 VANILLA")
+                BlinkLog.warn(
+                    LanguageManager.text(
+                        "console.drop-label-background-mode-invalid",
+                        "value" to cfg.backgroundMode
+                    )
+                )
             }
         }
     }
@@ -199,7 +252,12 @@ object DropLabelManager {
                 .invoke(null, a, r, g, b)
             display.javaClass.getMethod("setBackgroundColor", colorClass).invoke(display, color)
         }.onFailure {
-            BlinkLog.warn("TextDisplay background.argb 配置无效: $argb")
+            BlinkLog.warn(
+                LanguageManager.text(
+                    "console.drop-label-background-argb-invalid",
+                    "value" to argb
+                )
+            )
         }
     }
 
@@ -226,7 +284,12 @@ object DropLabelManager {
             runCatching { stand.setMarker(cfg.marker) }
             stand
         } catch (e: Throwable) {
-            BlinkLog.warn("ArmorStand 创建失败: ${e.javaClass.simpleName}: ${e.message}")
+            BlinkLog.warn(
+                LanguageManager.text(
+                    "console.drop-label-armor-stand-failed",
+                    "error" to "${e.javaClass.simpleName}: ${e.message}"
+                )
+            )
             null
         }
     }
@@ -297,7 +360,7 @@ object DropLabelManager {
                 marker: true
             """.trimIndent()
         )
-        BlinkLog.info("已生成默认 drop-labels.yml")
+        BlinkLog.info(LanguageManager.text("console.drop-label-default-created"))
     }
 
     private data class LabelEntry(val itemUuid: UUID, val labelUuid: UUID, val height: Double)
@@ -334,13 +397,7 @@ data class TextDisplayStyle(
     companion object {
         fun fromSection(section: ConfigurationSection?): TextDisplayStyle {
             val backgroundSection = section?.getConfigurationSection("background")
-            val explicitMode = backgroundSection?.getString("mode")
-            val legacyEnabled = backgroundSection?.get("enabled") as? Boolean
-            val mode = explicitMode ?: when (legacyEnabled) {
-                true -> "CUSTOM"
-                false -> "TRANSPARENT"
-                null -> "TRANSPARENT"
-            }
+            val mode = backgroundSection?.getString("mode", "TRANSPARENT") ?: "TRANSPARENT"
             return TextDisplayStyle(
                 billboard = section?.getString("billboard", "CENTER") ?: "CENTER",
                 shadow = section?.getBoolean("shadow", true) ?: true,

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.mapper
 
 import priv.seventeen.artist.aria.Aria
@@ -14,7 +30,7 @@ import priv.seventeen.artist.overture.util.Translator
 object DataMapper {
 
     private val VARIABLE_PATTERN = Regex("\\{([^}]+)}")
-    private val FUNCTION_PATTERN = Regex("^(\\w+)\\((.*)\\)$")
+    private val FUNCTION_PATTERN = Regex("^([A-Za-z0-9_.:-]+)\\((.*)\\)$")
 
     /**
      * 执行数据映射
@@ -30,7 +46,7 @@ object DataMapper {
         val result = mutableMapOf<String, String>()
 
         for ((key, expression) in mapper) {
-            result[key] = evaluate(expression, flatData, stream)
+            result[key] = evaluate(expression, flatData)
         }
 
         return result
@@ -39,7 +55,7 @@ object DataMapper {
     /**
      * 求值映射表达式
      */
-    private fun evaluate(expression: String, data: Map<String, Any>, stream: ItemStream): String {
+    private fun evaluate(expression: String, data: Map<String, Any>): String {
         // 尝试简单变量引用 "{key}"
         if (expression.startsWith("{") && expression.endsWith("}") && expression.count { it == '{' } == 1) {
             val key = expression.removeSurrounding("{", "}")
@@ -59,32 +75,39 @@ object DataMapper {
         }
 
         // 替换变量后尝试作为 Aria 表达式
-        val resolved = VARIABLE_PATTERN.replace(expression) { match ->
+        val textResolved = VARIABLE_PATTERN.replace(expression) { match ->
             val key = match.groupValues[1]
             data[key]?.toString() ?: "0"
         }
+        val ariaResolved = VARIABLE_PATTERN.replace(expression) { match ->
+            ariaVariableName(match.groupValues[1])
+        }
 
-        // 如果替换后是纯文本（无函数调用），直接返回
-        if (!resolved.contains("(") && !resolved.contains("if") && !resolved.contains("?")) {
-            return resolved
+        // 没有表达式运算特征时按普通文本处理。
+        if (!EXPRESSION_MARKER.containsMatchIn(ariaResolved)) {
+            return textResolved
         }
 
         // 作为 Aria 表达式执行
         return try {
             val ctx = Aria.createContext()
-            // 注入数据变量
+            // Aria 1.1.19 的 GlobalStorage 跨 Context 共享；数据必须绑定到 local val。
             data.forEach { (k, v) ->
-                val varKey = VariableKey.of(k.replace(".", "_"))
+                val varKey = VariableKey.of(ariaVariableName(k))
                 when (v) {
-                    is Number -> ctx.globalStorage.getGlobalVariable(varKey).setValue(NumberValue(v.toDouble()))
-                    else -> ctx.globalStorage.getGlobalVariable(varKey).setValue(StringValue(v.toString()))
+                    is Number -> ctx.forceSetLocalValue(varKey, NumberValue(v.toDouble()))
+                    else -> ctx.forceSetLocalValue(varKey, StringValue(v.toString()))
                 }
             }
-            val result = Aria.eval("return $resolved", ctx)
-            result?.stringValue() ?: resolved
+            Aria.eval("return $ariaResolved", ctx).stringValue()
         } catch (_: Exception) {
-            resolved
+            textResolved
         }
+    }
+
+    private fun ariaVariableName(key: String): String {
+        val normalized = key.replace(Regex("[^A-Za-z0-9_]"), "_")
+        return "__overture_${normalized}_${key.hashCode().toUInt().toString(16)}"
     }
 
     /**
@@ -108,4 +131,6 @@ object DataMapper {
             trimmed.toDoubleOrNull() ?: trimmed
         }
     }
+
+    private val EXPRESSION_MARKER = Regex("[-+*/<>=!&|?:()]|\\b(if|else|true|false)\\b")
 }

@@ -1,0 +1,59 @@
+durable_weapon_selector:
+  conditions:
+    - condition: "val.item.durability() <= 40"
+      display: durable_weapon_broken
+  default: durable_weapon_normal
+
+durable_weapon_normal:
+  name: "<item_name> <item_level>"
+  lore:
+    - "<item_type>"
+    - ""
+    - "<item_desc...>"
+    - ""
+    - "&7攻击力: &f+<damage_display>"
+    - "&7暴击率: &f<crit_display>"
+    - "&7耐久率: &f<durability_percent>"
+    - "&7<durability_bar>"
+    - ""
+    - "&8右键修复 · 丢弃动作被 !! 取消"
+
+durable_weapon_broken:
+  name: "&c[严重损坏] <item_name>"
+  lore:
+    - "&c当前耐久已经不高于 40"
+    - "&7右键可修复 5 点耐久"
+    - ""
+    - "&7耐久率: &f<durability_percent>"
+    - "&c<durability_bar>"
+
+ranged_display:
+  name: "<item_name>"
+  lore:
+    - "<item_type>"
+    - ""
+    - "<item_desc...>"
+    - ""
+    - "&7剩余次数: &f<uses_display>"
+    - "&7<uses_bar>"
+
+scroll_display:
+  name: "<item_name>"
+  lore:
+    - "<item_type>"
+    - ""
+    - "<item_desc...>"
+    - ""
+    - "&7可用次数: &f<uses_display>"
+    - "&b<uses_bar>"
+
+utility_display:
+  name: "<item_name>"
+  lore:
+    - "<item_type>"
+    - ""
+    - "<item_desc...>"
+    - ""
+    - "&7目标: &f<target_display>"
+    - "&7锁定: <active_display>"
+    - "&7当前槽位: &f<slot_display>"

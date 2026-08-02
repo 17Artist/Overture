@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture
 
 import priv.seventeen.artist.blink.bukkitPlugin
@@ -13,7 +29,6 @@ class OvertureConfig : BlinkConfig(bukkitPlugin, "config") {
 
     var update: UpdateSection = UpdateSection()
     var durability: DurabilitySection = DurabilitySection()
-    var cooldown: CooldownSection = CooldownSection()
     var rarity: RaritySection = RaritySection()
 
     @ConfigKey("drop-label")
@@ -53,21 +68,17 @@ class OvertureConfig : BlinkConfig(bukkitPlugin, "config") {
         var empty: String = "◇"
     }
 
-    class CooldownSection : BlinkSection() {
-        @Comment("冷却中提示消息")
-        var message: String = "&c冷却中，剩余 %time% 秒"
-    }
-
     class RaritySection : BlinkSection() {
         @Comment("是否启用品质发光效果")
         var enabled: Boolean = true
     }
 
+
     class DropLabelSection : BlinkSection() {
         @Comment("是否启用掉落物名称标签")
         var enabled: Boolean = true
 
-        @Comment("标签位置同步周期 (tick, 20 tick = 1 秒)，值越小越跟手，值越大性能越好")
+        @Comment("标签位置同步周期 (tick, 20 tick = 1 秒)，值越小越同步越及时，值越大性能越好")
         @ConfigKey("update-interval")
         var updateInterval: Long = 2L
 

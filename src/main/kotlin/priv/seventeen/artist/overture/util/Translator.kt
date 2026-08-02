@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.util
 
 import priv.seventeen.artist.asteroid.item.ItemTag
@@ -27,10 +43,13 @@ object Translator {
      * 将 ConfigurationSection 转换为 ItemTag
      * @return Pair<ItemTag, Map<String, ItemTagData?>> (转换结果, locked 数据映射)
      */
-    fun fromSection(section: ConfigurationSection): TranslateResult {
+    fun fromSection(section: ConfigurationSection, lockAll: Boolean = false): TranslateResult {
         val tag = ItemTag()
         val lockedData = mutableMapOf<String, ItemTagData?>()
         translateSection(section, tag, "", lockedData)
+        if (lockAll) {
+            tag.forEach { (key, value) -> lockedData[key] = value.clone() }
+        }
         return TranslateResult(tag, lockedData)
     }
 

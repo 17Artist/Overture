@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.feature
 
 import org.bukkit.Bukkit
@@ -12,18 +28,10 @@ import priv.seventeen.artist.overture.core.group.ItemGroup
 import priv.seventeen.artist.overture.core.item.OvertureItem
 import priv.seventeen.artist.overture.core.manager.ItemManager
 import priv.seventeen.artist.overture.core.manager.LoaderManager
-import priv.seventeen.artist.overture.util.ColorUtil
+import priv.seventeen.artist.overture.core.message.LanguageManager
 
 /**
  * 物品菜单 GUI
- *
- * 布局（6 行 × 9 列）：
- * - 第 0 行 (0-8)  : 面包屑导航
- * - 第 1-4 行 (9-44): 内容区（先展示子分组，后展示物品）
- * - 第 5 行 (45-53): 导航栏
- *   - 45: 上一页
- *   - 49: 返回上级 / 关闭
- *   - 53: 下一页
  */
 object ItemMenu {
 
@@ -40,6 +48,10 @@ object ItemMenu {
      * 打开物品菜单
      */
     fun open(player: Player, group: ItemGroup? = null, page: Int = 0) {
+        if (!player.isOp) {
+            player.sendMessage(message("command.op-only"))
+            return
+        }
         val entries = buildEntries(group)
         val totalPages = ((entries.size - 1).coerceAtLeast(0) / CONTENT_SIZE) + 1
         val safePage = page.coerceIn(0, totalPages - 1)
@@ -63,16 +75,40 @@ object ItemMenu {
 
         // 功能栏
         if (safePage > 0) {
-            inventory.setItem(SLOT_PREV, createNav("§a← 上一页", "§7第 ${safePage + 1}/$totalPages 页", Material.ARROW))
+            inventory.setItem(
+                SLOT_PREV,
+                createNav(
+                    message("menu.previous"),
+                    message("menu.page", "page" to safePage + 1, "pages" to totalPages),
+                    Material.ARROW
+                )
+            )
         }
         if (end < entries.size) {
-            inventory.setItem(SLOT_NEXT, createNav("§a下一页 →", "§7第 ${safePage + 1}/$totalPages 页", Material.ARROW))
+            inventory.setItem(
+                SLOT_NEXT,
+                createNav(
+                    message("menu.next"),
+                    message("menu.page", "page" to safePage + 1, "pages" to totalPages),
+                    Material.ARROW
+                )
+            )
         }
         if (group != null) {
-            val parentName = group.parent?.title ?: "根目录"
-            inventory.setItem(SLOT_BACK, createNav("§e← 返回上级", "§7返回到 §f$parentName", Material.OAK_DOOR))
+            val parentName = group.parent?.title ?: word("menu.root-label")
+            inventory.setItem(
+                SLOT_BACK,
+                createNav(
+                    message("menu.back"),
+                    message("menu.back-lore", "group" to parentName),
+                    Material.OAK_DOOR
+                )
+            )
         } else {
-            inventory.setItem(SLOT_BACK, createNav("§c关闭", "§7关闭菜单", Material.BARRIER))
+            inventory.setItem(
+                SLOT_BACK,
+                createNav(message("menu.close"), message("menu.close-lore"), Material.BARRIER)
+            )
         }
 
         player.openInventory(inventory)
@@ -84,6 +120,11 @@ object ItemMenu {
         event.isCancelled = true
 
         val player = event.whoClicked as? Player ?: return
+        if (!player.isOp) {
+            player.closeInventory()
+            player.sendMessage(message("command.op-only"))
+            return
+        }
         val slot = event.rawSlot
         if (slot < 0 || slot >= SIZE) return
 
@@ -119,11 +160,19 @@ object ItemMenu {
         when (entry) {
             is MenuEntry.GroupEntry -> open(player, entry.group)
             is MenuEntry.ItemEntry -> {
-                ItemManager.give(player, entry.item.id)
-                player.sendMessage(ColorUtil.colored("&a已获取物品: &f${entry.item.id}"))
+                if (ItemManager.give(player, entry.item.id)) {
+                    player.sendMessage(message("menu.obtained", "item" to entry.item.id))
+                } else {
+                    player.sendMessage(message("menu.obtain-failed", "item" to entry.item.id))
+                }
             }
         }
     }
+
+    private fun message(path: String, vararg placeholders: Pair<String, Any?>): String =
+        LanguageManager.text(path, *placeholders)
+
+    private fun word(path: String): String = LanguageManager.raw(path)
 
     // ==================== 内部实现 ====================
 
@@ -160,14 +209,14 @@ object ItemMenu {
         val lore = mutableListOf<String>()
         lore.addAll(group.description)
         if (lore.isEmpty()) {
-            lore.add("§7点击浏览分组")
+            lore.add(message("menu.browse-group"))
         }
         lore.add("")
         val itemCount = group.getItems(ItemManager.getItems()).size
         val subCount = group.getSubGroups().size
-        if (subCount > 0) lore.add("§7子分组: §f$subCount")
-        if (itemCount > 0) lore.add("§7物品数: §f$itemCount")
-        lore.add("§8» 点击进入")
+        if (subCount > 0) lore.add(message("menu.subgroup-count", "count" to subCount))
+        if (itemCount > 0) lore.add(message("menu.item-count", "count" to itemCount))
+        lore.add(message("menu.enter"))
         meta.lore = lore
         icon.itemMeta = meta
         return icon
@@ -175,14 +224,14 @@ object ItemMenu {
 
     private fun buildItemIcon(item: OvertureItem): ItemStack {
         val icon = try {
-            item.buildItemStack()
+            item.templateItemStack()
         } catch (_: Exception) {
-            ItemStack(item.material)
-        }
+            null
+        } ?: ItemStack(item.material)
         val meta = icon.itemMeta ?: return icon
         val lore = (meta.lore ?: mutableListOf()).toMutableList()
         if (lore.isNotEmpty()) lore.add("")
-        lore.add("§8» 点击获取")
+        lore.add(message("menu.obtain"))
         lore.add("§8§o${item.id}")
         meta.lore = lore
         icon.itemMeta = meta
@@ -195,11 +244,11 @@ object ItemMenu {
         // 根目录图标（槽位 0）
         val rootIcon = ItemStack(Material.COMPASS)
         val rootMeta = rootIcon.itemMeta
-        rootMeta?.setDisplayName("§f§l全部物品")
+        rootMeta?.setDisplayName(message("menu.root-name"))
         rootMeta?.lore = if (group == null) {
-            listOf("§e当前位置")
+            listOf(message("menu.current"))
         } else {
-            listOf("§7点击返回根目录")
+            listOf(message("menu.return-root"))
         }
         rootIcon.itemMeta = rootMeta
         inventory.setItem(0, rootIcon)
@@ -226,11 +275,11 @@ object ItemMenu {
             meta.setDisplayName("§f${node.title}")
             val lore = mutableListOf<String>()
             if (isCurrent) {
-                lore.add("§e当前位置")
+                lore.add(message("menu.current"))
             } else {
-                lore.add("§7点击跳转至此")
+                lore.add(message("menu.jump"))
             }
-            lore.add("§8路径: ${node.path}")
+            lore.add(message("menu.path", "path" to node.path))
             meta.lore = lore
             icon.itemMeta = meta
             inventory.setItem(slot, icon)
@@ -248,12 +297,16 @@ object ItemMenu {
     }
 
     private fun buildTitle(group: ItemGroup?, page: Int, totalPages: Int): String {
-        val base = if (group != null) {
-            "§8Overture » ${stripColor(group.title)}"
+        val base = if (group == null) {
+            message("menu.title.root")
         } else {
-            "§8Overture"
+            message("menu.title.group", "group" to stripColor(group.title))
         }
-        return if (totalPages > 1) "$base §7($page/$totalPages)" else base
+        return if (totalPages > 1) {
+            message("menu.title.page", "title" to base, "page" to page, "pages" to totalPages)
+        } else {
+            base
+        }
     }
 
     private fun stripColor(s: String): String {
@@ -289,7 +342,7 @@ object ItemMenu {
         private var inv: Inventory? = null
         /** 槽位 → 菜单条目 */
         val entries: MutableMap<Int, MenuEntry> = mutableMapOf()
-        /** 面包屑槽位 → 目标分组（null 表示根） */
+        /** 槽位 → 目标分组（null 表示根） */
         val breadcrumb: MutableMap<Int, ItemGroup?> = mutableMapOf()
 
         fun attach(inventory: Inventory) {

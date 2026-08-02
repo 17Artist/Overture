@@ -1,64 +1,110 @@
-# 示例物品定义
-
-# 钻石剑示例
+# Overture 默认示例：基础物品、药水、锁定字段与多种 Meta。
+# 缺失时由插件从 JAR 写出；已有同名文件永不覆盖。
 example_sword:
   display: weapon_display
   icon: DIAMOND_SWORD
+  drop-label: default
   name:
     item_name: "&b示例钻石剑"
-    item_level: "&7Lv.1"
+    item_level: "&7Lv. I"
   lore:
     item_type: "&9武器"
     item_desc:
-      - "&f一把示例钻石剑"
-      - "&f用于演示 Overture 物品系统"
+      - "&f基础示例：属性、自定义耐久、品质与事件"
+      - "&7右键触发冷却并损耗耐久，攻击额外损耗 1 点"
+    item_extra: []
   data:
     damage: 7
     attack-speed: 1.6
+    level: 1
     durability!!: 100
   data-mapper:
     damage_display: "{damage}"
-    speed_display: "{attack-speed}"
-    durability: "bar({durability_current}, {durability})"
+    speed_display: "fixed({attack-speed}, 1)"
+    level_display: "roman({level})"
+    durability: "bar({durability_current}, {durability}, 16)"
   meta:
     attribute:
       mainhand:
         generic_attack_damage: "+7"
         generic_attack_speed: "+1.6"
-    durability:
+    durability!!:
       max: 100
       remains: STICK
       synchronous: true
     unique: true
     custom_model_data: 10001
     shiny: true
+    rarity: RARE
+    item_flag:
+      - HIDE_ATTRIBUTES
   event:
     on_right_click!!: |
-      if (cooldown.check('skill', 5000)) {
-        cooldown.set('skill')
-        sendMessage('&a技能释放！')
-        item.damage(10)
-      } else {
-        sendMessage('&c技能冷却中...')
+      if (val.player.checkItemCooldown('example_sword_skill', 5000)) {
+        val.player.setItemCooldown('example_sword_skill')
+        val.item.damage(10)
       }
     on_attack: |
-      item.damage(1)
+      val.item.damage(1)
 
-# 治疗药水示例
 example_potion:
-  display: simple_display
+  display: potion_display
   icon: POTION
   name:
-    item_name: "&a治疗药水"
+    item_name: "&a再生药水"
   lore:
     item_type: "&d消耗品"
     item_desc:
-      - "&f饮用后恢复生命值"
+      - "&f展示 Potion Meta 与 on_consume 触发器"
+      - "&7生存模式饮用后保留原版玻璃瓶；创造模式原药水记录次数"
+  data:
+    consumed: 0
+  data-mapper:
+    consumed_display: "{consumed}"
   meta:
     potion:
-      - "REGENERATION,100,1"
+      - "REGENERATION,200,1"
     custom_model_data: 10002
   event:
     on_consume: |
-      sendMessage('&a你感到一股暖流涌遍全身')
-      potion.give('REGENERATION', 200, 2)
+      val.item.data('consumed', val.item.data('consumed') + 1)
+      val.item.update()
+
+example_armor:
+  display: armor_display
+  icon!!: LEATHER_CHESTPLATE
+  drop-label: legendary
+  name!!:
+    item_name: "&d星界旅者胸甲"
+    item_level: "&7Lv. XII"
+  lore!!:
+    item_type: "&9护甲 · 锁定展示"
+    item_desc:
+      - "&f展示 icon/name/lore/data/meta 的锁定语法"
+      - "&7同时覆盖颜色、附魔、原生 NBT 与可选掉落模型"
+  data!!:
+    level: 12
+    armor: 8
+    bound: true
+  data-mapper:
+    level_display: "roman({level})"
+    armor_display: "{armor}"
+    bound_display: "condition({bound}, '&a已绑定', '&c未绑定')"
+  meta!!:
+    color: "120,80,220"
+    attribute:
+      chest:
+        generic_armor: "+8"
+    enchantment:
+      protection: 4
+      unbreaking: 3
+    unbreakable: true
+    item_flag:
+      - HIDE_ATTRIBUTES
+      - HIDE_ENCHANTS
+      - HIDE_UNBREAKABLE
+    custom_model_data: 10003
+    shiny: true
+    rarity: LEGENDARY
+    native:
+      OvertureExample: "armor"

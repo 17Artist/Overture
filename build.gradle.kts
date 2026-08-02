@@ -1,18 +1,21 @@
 plugins {
     kotlin("jvm") version "1.8.22"
-    id("priv.seventeen.artist.blink") version "1.3.12"
+    id("priv.seventeen.artist.blink") version "1.3.14"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     `maven-publish`
 }
 
+group = "priv.seventeen.artist.overture"
+version = "1.0.0"
+
 blink {
     name.set("Overture")
-    version.set("1.0.0")
+    version.set(project.version.toString())
     description.set("Next-generation item library plugin")
     authors.set(listOf("17Artist"))
     packageName.set("priv.seventeen.artist.overture")
-    apiVersion.set("1.20")
-    logPrefix.set("§b♪ §dOverture")
+    apiVersion.set("1.18")
+    logPrefix.set("§6♦ §dOverture")
     depend.set(listOf())
     softDepend.set(listOf("ArcartX"))
     foliaSupported.set(false)
@@ -28,10 +31,16 @@ repositories {
 }
 
 dependencies {
-    implementation("priv.seventeen.artist.blink:blink-common:1.3.12")
+    implementation("priv.seventeen.artist.blink:blink-common:1.3.14")
     compileOnly("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
     compileOnly("com.google.code.gson:gson:2.10.1")
     compileOnly("priv.seventeen.artist.arcartx:ArcartX:2.2.0.5")
+
+    testImplementation(kotlin("test-junit5"))
+    testImplementation("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
+    testRuntimeOnly("com.google.code.gson:gson:2.10.1")
+    testImplementation("priv.seventeen.artist.aria:aria:${property("ariaVersion")}")
+    testImplementation("priv.seventeen.artist.asteroid:asteroid-nms:${property("asteroidVersion")}")
 }
 
 kotlin {
@@ -44,6 +53,10 @@ tasks.shadowJar {
 
 tasks.named("build") {
     dependsOn("shadowJar")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 val repoPassword: String = System.getenv("repo") ?: ""

@@ -2,7 +2,7 @@ build/
 .gradle/
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
-docs/node_modules/
-docs/.vitepress/dist/
-docs/.vitepress/cache/
 /.idea/
+.runtime/
+/qa/
+/scripts/

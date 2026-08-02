@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.meta.impl
 
 import org.bukkit.Material
@@ -57,7 +73,8 @@ class MetaDurability(
     override fun build(player: Player?, compound: ItemTag, sourceTag: ItemTag, signals: Set<ItemSignal>) {
         // 写入最大耐久到 data
         val dataTag = compound.getCompound("data")
-        if (!dataTag.containsKey("durability")) {
+        val forceUpdate = locked && signals.contains(ItemSignal.UPDATE_CHECKED)
+        if (forceUpdate || !dataTag.containsKey("durability")) {
             dataTag.putInt("durability", max)
             compound.putCompound("data", dataTag)
         }
@@ -73,6 +90,20 @@ class MetaDurability(
         // 因为此时 NBT 尚未 saveTo，无法从 ItemStack 读取
     }
 
+    override fun drop(player: Player?, compound: ItemTag, sourceTag: ItemTag) {
+        if (!compound.containsKey("data")) return
+        val dataTag = compound.getCompound("data")
+        dataTag.remove(DATA_KEY_CURRENT)
+        dataTag.remove(DATA_KEY_MAX)
+        compound.putCompound("data", dataTag)
+    }
+
+    override fun dropMeta(itemMeta: ItemMeta) {
+        if (itemMeta is Damageable) {
+            itemMeta.damage = 0
+        }
+    }
+
     /**
      * 同步原版耐久条（由 ItemBuilder 调用，传入 stream 数据）
      */
@@ -81,7 +112,7 @@ class MetaDurability(
         if (itemMeta !is Damageable) return
         if (maxDur <= 0 || maxItemDur <= 0) return
 
-        val percent = current.toDouble() / maxDur.toDouble()
+        val percent = (current.toDouble() / maxDur.toDouble()).coerceIn(0.0, 1.0)
         itemMeta.damage = maxItemDur - (maxItemDur * percent).toInt()
     }
 
@@ -90,7 +121,7 @@ class MetaDurability(
      */
     fun getRemainsItem(): ItemStack? {
         val remainsStr = remains ?: return null
-        val material = Material.matchMaterial(remainsStr.uppercase()) ?: return null
+        val material = Material.getMaterial(remainsStr.uppercase()) ?: return null
         return ItemStack(material)
     }
 

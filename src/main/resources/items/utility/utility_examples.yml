@@ -1,0 +1,63 @@
+example_scroll:
+  display: scroll_display
+  icon: PAPER
+  name:
+    item_name: "&b回响卷轴"
+  lore:
+    item_type: "&3次数型道具"
+    item_desc:
+      - "&f展示 player 冷却对象函数与 ItemStream.use()"
+      - "&7右键消耗一次；归零后移除当前物品"
+  data:
+    uses: 3
+    max-uses: 3
+  data-mapper:
+    uses_display: "{uses}"
+    uses_bar: "bar({uses}, {max-uses}, 12)"
+  meta:
+    custom_model_data: 10004
+    shiny: true
+  event:
+    on_right_click!!: |
+      if (val.item.uses() > 0) {
+        if (val.player.checkItemCooldown('example_scroll', 1500)) {
+          val.player.setItemCooldown('example_scroll')
+          val.item.data('last_used', 1)
+          val.item.use()
+        }
+      }
+
+example_compass:
+  display: utility_display
+  icon: COMPASS
+  name:
+    item_name: "&b航路罗盘"
+  lore:
+    item_type: "&9导航工具"
+    item_desc:
+      - "&f展示嵌套 data、format/condition Mapper 与 Native Meta"
+      - "&7切换主副手时更新 held_slot 数据"
+  data:
+    target:
+      x: 128
+      z: -64
+    active: true
+    held_slot: "mainhand"
+  data-mapper:
+    target_display: "format('X=%s, Z=%s', {target.x}, {target.z})"
+    active_display: "condition({active}, '&a已锁定', '&c未锁定')"
+    slot_display: "{held_slot}"
+  meta:
+    unbreakable: true
+    item_flag:
+      - HIDE_UNBREAKABLE
+    custom_model_data: 10005
+    native:
+      OvertureExample: "compass"
+  event:
+    on_swap_to_offhand: |
+      val.item.data('held_slot', 'offhand')
+      val.item.update()
+    on_swap_to_mainhand: |
+      val.item.data('held_slot', 'mainhand')
+      val.item.update()

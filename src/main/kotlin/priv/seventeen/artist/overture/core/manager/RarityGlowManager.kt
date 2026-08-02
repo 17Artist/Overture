@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.manager
 
 import org.bukkit.Bukkit
@@ -6,7 +22,9 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Item
 import org.bukkit.scoreboard.Team
 import priv.seventeen.artist.blink.BlinkLog
+import priv.seventeen.artist.overture.core.message.LanguageManager
 import priv.seventeen.artist.blink.bukkitPlugin
+import priv.seventeen.artist.overture.OvertureConfig
 import priv.seventeen.artist.overture.core.item.ItemStream
 import java.io.File
 
@@ -53,6 +71,12 @@ object RarityGlowManager {
             tiers[tier.uppercase()] = RarityTier(color)
         }
 
+        if (!OvertureConfig.instance.rarity.enabled) {
+            clearExistingGlows()
+            unregisterTeams()
+            return
+        }
+        clearExistingGlows()
         reload(tiers)
         rescanExistingDrops()
     }
@@ -72,7 +96,13 @@ object RarityGlowManager {
         for ((tier, cfg) in tiers) {
             val teamName = "$TEAM_PREFIX${tier.lowercase()}"
             val color = runCatching { ChatColor.valueOf(cfg.color.uppercase()) }.getOrElse {
-                BlinkLog.warn("品质 $tier 的颜色 '${cfg.color}' 无效，已回退为 WHITE")
+                BlinkLog.warn(
+                    LanguageManager.text(
+                        "console.rarity-color-invalid",
+                        "tier" to tier,
+                        "color" to cfg.color
+                    )
+                )
                 ChatColor.WHITE
             }
             // reload 后 Team 已被 unregister，直接重新注册
@@ -81,7 +111,13 @@ object RarityGlowManager {
             teams[tier] = team
         }
 
-        BlinkLog.info("已注册 ${teams.size} 个品质发光 Team: ${teams.keys.joinToString()}")
+        BlinkLog.info(
+            LanguageManager.text(
+                "console.rarity-loaded",
+                "count" to teams.size,
+                "tiers" to teams.keys.joinToString()
+            )
+        )
     }
 
     /**
@@ -89,6 +125,7 @@ object RarityGlowManager {
      * 若物品不含 rarity 数据或品质未在 rarity.yml 中配置，则静默跳过。
      */
     fun applyGlow(entity: Item) {
+        if (!OvertureConfig.instance.rarity.enabled) return
         val tier = ItemStream(entity.itemStack).overtureData.getString("rarity") ?: return
         val team = teams[tier] ?: return
         val uuid = entity.uniqueId.toString()
@@ -105,15 +142,30 @@ object RarityGlowManager {
         val uuid = entity.uniqueId.toString()
         val tier = entityTier.remove(uuid) ?: return
         teams[tier]?.removeEntry(uuid)
+        entity.isGlowing = false
     }
 
     /**
      * 插件禁用时调用：卸载所有 Team 并清空索引。
      */
     fun cleanup() {
+        clearExistingGlows()
+        unregisterTeams()
+    }
+
+    private fun unregisterTeams() {
         teams.values.forEach { runCatching { it.unregister() } }
         teams.clear()
         entityTier.clear()
+    }
+
+    private fun clearExistingGlows() {
+        Bukkit.getWorlds().forEach { world ->
+            world.entities.filterIsInstance<Item>().forEach { item ->
+                val stream = ItemStream(item.itemStack)
+                if (stream.isOverture) item.isGlowing = false
+            }
+        }
     }
 
     /**
@@ -138,15 +190,15 @@ object RarityGlowManager {
         Bukkit.getScheduler().runTaskLater(bukkitPlugin, Runnable {
             var count = 0
             Bukkit.getWorlds().forEach { world ->
-                world.entities.filterIsInstance<Item>().forEach { item ->
+                world.entities.filterIsInstance<Item>().forEach entityLoop@{ item ->
                     val stream = ItemStream(item.itemStack)
-                    if (!stream.isOverture) return@forEach
+                    if (!stream.isOverture) return@entityLoop
                     applyGlow(item)
                     count++
                 }
             }
             if (count > 0) {
-                BlinkLog.info("已重新应用 $count 个已存在掉落物的品质发光")
+                BlinkLog.info(LanguageManager.text("console.rarity-reapplied", "count" to count))
             }
         }, 1L)
     }
@@ -183,7 +235,7 @@ object RarityGlowManager {
               color: GOLD
             """.trimIndent()
         )
-        BlinkLog.info("已生成默认 rarity.yml")
+        BlinkLog.info(LanguageManager.text("console.rarity-default-created"))
     }
 }
 

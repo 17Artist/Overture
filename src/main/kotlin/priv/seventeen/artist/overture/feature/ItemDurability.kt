@@ -1,9 +1,23 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.feature
 
-import org.bukkit.entity.Player
 import priv.seventeen.artist.blink.event.AutoListener
 import priv.seventeen.artist.overture.api.event.ItemReleaseEvent
-import priv.seventeen.artist.overture.core.item.ItemStream
 import priv.seventeen.artist.overture.core.manager.ItemManager
 import priv.seventeen.artist.overture.core.meta.impl.MetaDurability
 import priv.seventeen.artist.overture.util.ColorUtil
@@ -58,8 +72,9 @@ object ItemDurability {
         val format = meta.displayFormat ?: displayFormat
         val full = meta.symbolFull
         val empty = meta.symbolEmpty
+        val safeCurrent = current.coerceIn(0, max)
 
-        val filled = if (max > 0) (current.toDouble() / max * scale).toInt().coerceIn(0, scale) else 0
+        val filled = if (max > 0) (safeCurrent.toDouble() / max * scale).toInt().coerceIn(0, scale) else 0
         val sb = StringBuilder()
         for (i in 1..scale) {
             sb.append(if (i <= filled) full else empty)
@@ -67,8 +82,8 @@ object ItemDurability {
 
         return format
             .replace("%symbol%", sb.toString())
-            .replace("%current%", current.toString())
+            .replace("%current%", safeCurrent.toString())
             .replace("%max%", max.toString())
-            .replace("%percent%", if (max > 0) "${(current * 100 / max)}%" else "0%")
+            .replace("%percent%", if (max > 0) "${(safeCurrent.toLong() * 100L / max)}%" else "0%")
     }
 }

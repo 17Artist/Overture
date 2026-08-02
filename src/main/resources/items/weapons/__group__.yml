@@ -1,0 +1,6 @@
+priority: 10
+icon: IRON_SWORD
+name: "&c武器示例"
+lore:
+  - "&7事件模型、条件展示与自定义耐久"
+  - "&7目录本身即 Overture 物品分组"

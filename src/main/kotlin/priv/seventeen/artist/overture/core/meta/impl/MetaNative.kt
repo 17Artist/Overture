@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 17Artist
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package priv.seventeen.artist.overture.core.meta.impl
 
 import org.bukkit.configuration.ConfigurationSection
@@ -6,6 +22,7 @@ import priv.seventeen.artist.asteroid.item.ItemTag
 import priv.seventeen.artist.overture.core.item.ItemSignal
 import priv.seventeen.artist.overture.core.meta.Meta
 import priv.seventeen.artist.overture.core.meta.MetaKey
+import priv.seventeen.artist.overture.core.meta.MetaState
 import priv.seventeen.artist.overture.util.Translator
 
 /**
@@ -28,6 +45,12 @@ class MetaNative(
 
     override val key: String = "native"
 
+    override fun prepareRebuild(compound: ItemTag, sourceTag: ItemTag) {
+        for (nativeKey in MetaState.getStrings(compound, key)) {
+            sourceTag.remove(nativeKey)
+        }
+    }
+
     override fun build(player: Player?, compound: ItemTag, sourceTag: ItemTag, signals: Set<ItemSignal>) {
         section ?: return
         val nativeTag = Translator.toItemTag(section)
@@ -35,14 +58,14 @@ class MetaNative(
         for ((k, v) in nativeTag) {
             sourceTag.put(k, v)
         }
+        MetaState.putStrings(compound, key, nativeTag.keys)
     }
 
-    override fun drop(player: Player?, compound: ItemTag) {
-        section ?: return
-        // 注意：drop 时也应从 sourceTag 删除，但当前签名只有 compound
-        // 这里从 compound 的父级（无法直接访问）删除，暂时标记为已知限制
-        for (key in section.getKeys(false)) {
-            compound.remove(key.removeSuffix("!!"))
+    override fun drop(player: Player?, compound: ItemTag, sourceTag: ItemTag) {
+        val keys = MetaState.getStrings(compound, key)
+        for (nativeKey in keys) {
+            sourceTag.remove(nativeKey)
         }
+        MetaState.remove(compound, key)
     }
 }
