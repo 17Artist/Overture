@@ -118,6 +118,17 @@ object Overture {
         val reloadReport = ItemManager.reloadWithReport()
         if (!reloadReport.success) {
             BlinkLog.error(LanguageManager.text("console.lifecycle.initial-load-failed"))
+            reloadReport.issues.take(20).forEach { issue ->
+                BlinkLog.error(LanguageManager.text(
+                    "console.lifecycle.initial-load-issue",
+                    "severity" to issue.severity.name,
+                    "source" to issue.source,
+                    "item" to (issue.itemId ?: "-"),
+                    "path" to (issue.path ?: "-"),
+                    "component" to (issue.component ?: "-"),
+                    "message" to issue.message
+                ))
+            }
             org.bukkit.Bukkit.getPluginManager().disablePlugin(bukkitPlugin)
             return
         }

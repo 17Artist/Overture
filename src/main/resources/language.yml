@@ -122,6 +122,7 @@ console:
     default-files-failed: "创建默认文件失败：%error%"
     default-files-created: "已创建 &b%count% &f个默认文件"
     initial-load-failed: "物品配置加载失败，插件已停止启动"
+    initial-load-issue: "[%severity%] %source% item=%item% path=%path% component=%component%：%message%"
     enabled: "加载完成：&b%items% &f个物品，&b%displays% &f个展示方案"
     disabled: "插件已卸载"
   language-load-failed: "language.yml 读取失败，继续使用当前内容：%error%"
